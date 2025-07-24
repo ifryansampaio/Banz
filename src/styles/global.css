@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, #1e293b 0%, #2563eb 100%);
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: #1e293b;
+}
+::-webkit-scrollbar-thumb {
+  background: #2563eb;
+  border-radius: 4px;
+}
+
+input, select, textarea, button {
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+
+input:focus, select:focus, textarea:focus, button:focus {
+  box-shadow: 0 0 0 2px #2563eb44;
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+  .rounded-lg, .rounded, .shadow-lg, .shadow, .p-6, .p-4, .p-3, .p-2 {
+    border-radius: 1rem !important;
+    box-shadow: 0 2px 12px #0002 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  .text-lg, .text-xl, .text-2xl, .text-3xl {
+    font-size: 1.1rem !important;
+  }
+  .w-64 {
+    width: 90vw !important;
+    min-width: 0 !important;
+  }
+}
