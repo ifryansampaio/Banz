@@ -1,34 +1,26 @@
-// Arquivo básico de service worker para PWA React
-const CACHE_NAME = 'banz-pwa-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  // Adicione outros arquivos estáticos importantes aqui
-];
+// service-worker.js - Workbox básico para PWA offline-first
+importScripts('https://storage.googleapis.com/workbox-cdn/releases/6.5.4/workbox-sw.js');
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(urlsToCache);
+if (workbox) {
+  workbox.core.skipWaiting();
+  workbox.core.clientsClaim();
+
+  // Cache de assets essenciais
+  workbox.precaching.precacheAndRoute(self.__WB_MANIFEST || []);
+
+  // Cache de rotas
+  workbox.routing.registerRoute(
+    ({ request }) => request.destination === 'document' || request.destination === 'script' || request.destination === 'style' || request.destination === 'image',
+    new workbox.strategies.StaleWhileRevalidate({
+      cacheName: 'banca-app-assets',
     })
   );
-});
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))
-      );
-    })
-  );
-});
-
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
-    })
-  );
-});
+  // Fallback para offline
+  workbox.routing.setCatchHandler(async ({ event }) => {
+    if (event.request.destination === 'document') {
+      return caches.match('/index.html');
+    }
+    return Response.error();
+  });
+}

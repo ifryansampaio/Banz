@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -21,18 +22,15 @@ const Dashboard = () => {
       let somaDinheiro = 0;
       let somaMaquininha = 0;
       let itemTotais = {};
-
       lista.forEach((v) => {
         v.pagamentos.forEach((p) => {
           if (p.forma === "dinheiro") somaDinheiro += parseFloat(p.valor || 0);
           else if (["pix", "credito", "debito"].includes(p.forma)) somaMaquininha += parseFloat(p.valor || 0);
         });
-
         v.itens.forEach((i) => {
           itemTotais[i.produto] = (itemTotais[i.produto] || 0) + i.quantidade;
         });
       });
-
       setTotalDinheiro(somaDinheiro);
       setTotalMaquininha(somaMaquininha);
       setTotal(somaDinheiro + somaMaquininha);
@@ -64,7 +62,7 @@ const Dashboard = () => {
             <h2 className="text-xl font-semibold mb-4 text-blue-200">Itens Vendidos</h2>
             <ul className="divide-y divide-gray-700">
               {Object.entries(totaisPorItem)
-                .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+                .sort((a, b) => a[0].replace(/(\d+)/g, n => n.padStart(10, '0')).localeCompare(b[0].replace(/(\d+)/g, n => n.padStart(10, '0')), 'pt-BR', { sensitivity: 'base' }))
                 .map(([nome, qtd]) => (
                   <li key={nome} className="py-3">
                     <div className="bg-gray-900 p-4 rounded-lg flex flex-col gap-2 shadow-lg">

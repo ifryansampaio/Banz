@@ -8,6 +8,11 @@ import { registrarLog } from "../utils/log";
 const Estoque = () => {
   const { loja } = useAuth();
   const [produtos, setProdutos] = useState([]);
+
+  // Função de ordenação natural
+  function naturalSort(a, b) {
+    return a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true, sensitivity: 'base' });
+  }
   const [novoProduto, setNovoProduto] = useState({ nome: "", quantidade: "", precoMin: "", precoMax: "" });
   const [editandoId, setEditandoId] = useState(null);
   const [editandoProduto, setEditandoProduto] = useState({});
@@ -29,8 +34,10 @@ const Estoque = () => {
     }
     const q = query(collection(db, "produtos"), where("loja", "==", loja.nome));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setProdutos(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-      saveLocal(`produtos_${loja.nome}`, snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      lista.sort(naturalSort);
+      setProdutos(lista);
+      saveLocal(`produtos_${loja.nome}`, lista);
     });
     return () => unsubscribe();
   }, [loja]);

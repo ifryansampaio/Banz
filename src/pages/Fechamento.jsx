@@ -6,6 +6,8 @@ import { exportarBackupFirestore } from "../utils/backup";
 
 const Fechamento = () => {
   const { loja } = useAuth();
+  const [lojas, setLojas] = useState([]);
+  const [lojaSelecionada, setLojaSelecionada] = useState(loja?.nome || "");
   const [vendas, setVendas] = useState([]);
   const [totais, setTotais] = useState({ total: 0, dinheiro: 0, maquininha: 0, alertas: 0, itens: {} });
   const [fechando, setFechando] = useState(false);
@@ -15,9 +17,17 @@ const Fechamento = () => {
   const [editVendaData, setEditVendaData] = useState(null);
   const [funcionarios, setFuncionarios] = useState([]);
 
+  // Buscar lojas para o select
   useEffect(() => {
-    if (!loja) return;
-    const q = query(collection(db, "vendas"), where("loja", "==", loja.nome));
+    (async () => {
+      const snap = await getDocs(collection(db, "lojas"));
+      setLojas(snap.docs.map(doc => doc.data().nome));
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!lojaSelecionada) return;
+    const q = query(collection(db, "vendas"), where("loja", "==", lojaSelecionada));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       const ordenadas = lista.sort((a, b) => new Date(b.data) - new Date(a.data));
@@ -25,27 +35,27 @@ const Fechamento = () => {
       setVendas(ordenadas);
     });
     return () => unsubscribe();
-  }, [loja]);
+  }, [lojaSelecionada]);
 
   useEffect(() => {
-    if (!loja) return;
-    const q = query(collection(db, "fechamentos"), where("loja", "==", loja.nome));
+    if (!lojaSelecionada) return;
+    const q = query(collection(db, "fechamentos"), where("loja", "==", lojaSelecionada));
     getDocs(q).then(snapshot => {
       setHistorico(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-  }, [loja, fechando, editVenda]);
+  }, [lojaSelecionada, fechando, editVenda]);
 
   useEffect(() => {
-    if (!loja) return;
+    if (!lojaSelecionada) return;
     // Verifica se existe fechamento do dia anterior e faz automático se necessário
     const checkAndAutoClose = async () => {
       const hoje = new Date();
       const hojeStr = hoje.toISOString().slice(0, 10);
-      const q = query(collection(db, "fechamentos"), where("loja", "==", loja.nome));
+      const q = query(collection(db, "fechamentos"), where("loja", "==", lojaSelecionada));
       const fechamentosSnap = await getDocs(q);
       const datasFechadas = fechamentosSnap.docs.map(doc => doc.data().data);
       // Busca vendas não fechadas
-      const vendasSnap = await getDocs(query(collection(db, "vendas"), where("loja", "==", loja.nome)));
+      const vendasSnap = await getDocs(query(collection(db, "vendas"), where("loja", "==", lojaSelecionada)));
       const vendasPendentes = vendasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if (vendasPendentes.length > 0) {
         // Descobre a data da venda mais antiga
@@ -56,7 +66,7 @@ const Fechamento = () => {
           const vendasDoDia = vendasPendentes.filter(v => v.data.slice(0, 10) === dataVenda);
           const totais = calcularTotais(vendasDoDia, true);
           await addDoc(collection(db, "fechamentos"), {
-            loja: loja.nome,
+            loja: lojaSelecionada,
             data: dataVenda,
             vendas: vendasDoDia,
             totais,
@@ -69,7 +79,7 @@ const Fechamento = () => {
       }
     };
     checkAndAutoClose();
-  }, [loja]);
+  }, [lojaSelecionada]);
 
   useEffect(() => {
     async function fetchFuncionarios() {
@@ -118,13 +128,13 @@ const Fechamento = () => {
     setFechando(true);
     const hoje = new Date();
     await addDoc(collection(db, "fechamentos"), {
-      loja: loja.nome,
+      loja: lojaSelecionada,
       data: hoje.toISOString().slice(0, 10),
       vendas,
       totais,
     });
     // Limpa vendas do dia (pode ser melhorado para só as do dia)
-    const vendasSnap = await getDocs(query(collection(db, "vendas"), where("loja", "==", loja.nome)));
+    const vendasSnap = await getDocs(query(collection(db, "vendas"), where("loja", "==", lojaSelecionada)));
     for (const venda of vendasSnap.docs) {
       await deleteDoc(doc(db, "vendas", venda.id));
     }
@@ -267,7 +277,7 @@ const Fechamento = () => {
             <strong>Itens Vendidos:</strong>
             <ul className="ml-4">
               {Object.entries(totais.itens)
-                .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+                .sort((a, b) => a[0].replace(/(\d+)/g, n => n.padStart(10, '0')).localeCompare(b[0].replace(/(\d+)/g, n => n.padStart(10, '0')), 'pt-BR', { sensitivity: 'base' }))
                 .map(([nome, qtd]) => (
                   <li key={nome}>{nome}: <span className="text-blue-200 font-bold">{qtd}</span></li>
                 ))}
@@ -276,6 +286,20 @@ const Fechamento = () => {
           <button onClick={fecharDia} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded mt-4 font-bold text-white" disabled={fechando}>
             {fechando ? "Fechando..." : "Fechar o Dia"}
           </button>
+        </div>
+        {/* Select de loja */}
+        <div className="mb-4">
+          <label className="font-bold text-blue-200 mr-2">Loja:</label>
+          <select
+            className="p-2 rounded text-black"
+            value={lojaSelecionada}
+            onChange={e => setLojaSelecionada(e.target.value)}
+          >
+            <option value="">Selecione a loja</option>
+            {lojas.map(nome => (
+              <option key={nome} value={nome}>{nome}</option>
+            ))}
+          </select>
         </div>
         <h2 className="text-xl mb-2 mt-6 text-blue-200 font-semibold">Histórico de Fechamentos</h2>
         <div className="bg-gray-800 p-4 rounded-lg shadow-lg mb-4">
@@ -287,7 +311,7 @@ const Fechamento = () => {
                 <li key={f.id} className="py-3">
                   <div className="bg-gray-900 p-4 rounded-lg flex flex-col gap-2 shadow-lg">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <span className="font-bold text-lg text-blue-200">{f.data}</span>
+                      <span className="font-bold text-lg text-blue-200">{f.loja} - {f.data}</span>
                       <div className="flex flex-wrap gap-4 text-gray-400 text-sm">
                         <span>Total: <b>R$ {f.totais?.total?.toFixed(2) || 0}</b></span>
                         <span>Dinheiro: R$ {f.totais?.dinheiro?.toFixed(2) || 0}</span>
