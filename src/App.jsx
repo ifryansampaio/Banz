@@ -9,6 +9,10 @@ import Fechamento from "./pages/Fechamento";
 import Administrar from "./pages/Administrar";
 import Login from "./pages/Login";
 import LojaLogin from "./pages/LojaLogin";
+import Transferencias from "./pages/Transferencias";
+import Entradas from "./pages/Entradas";
+import TodasEntradas from "./pages/TodasEntradas";
+import TodasTransferencias from "./pages/TodasTransferencias";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { db } from "./firebase/config";
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
@@ -85,6 +89,10 @@ const AppRoutes = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/vender" element={<Vender />} />
+          <Route path="/entradas" element={<Entradas />} />
+          <Route path="/todas-entradas" element={<TodasEntradas />} />
+          <Route path="/transferencias" element={<Transferencias />} />
+          <Route path="/todas-transferencias" element={<TodasTransferencias />} />
           <Route path="/vendas" element={<Vendas />} />
           <Route path="/estoque" element={<Estoque />} />
           <Route path="/fechamento" element={<Fechamento />} />

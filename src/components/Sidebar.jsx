@@ -10,8 +10,11 @@ const icons = {
   vender: (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 10c-4.418 0-8-1.79-8-4V7a2 2 0 012-2h12a2 2 0 012 2v7c0 2.21-3.582 4-8 4z" /></svg>
   ),
-  estoque: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m16 0H4" /></svg>
+  transferencias: (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" /></svg>
+  ),
+  entradas: (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
   ),
   fechamento: (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2a4 4 0 018 0v2m-4-4V7m0 0V3m0 4a4 4 0 00-4 4v4m0 0v2a4 4 0 008 0v-2" /></svg>
@@ -81,8 +84,11 @@ const Sidebar = ({ open, setOpen }) => {
             <Link to="/vender" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
               {icons.vender} <span>Vender</span>
             </Link>
-            <Link to="/estoque" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
-              {icons.estoque} <span>Estoque</span>
+            <Link to="/entradas" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
+              {icons.entradas} <span>Entradas</span>
+            </Link>
+            <Link to="/transferencias" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
+              {icons.transferencias} <span>Transferências</span>
             </Link>
             <Link to="/administrar" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
               {icons.administrar} <span>Administrar</span>
