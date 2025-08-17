@@ -18,11 +18,17 @@ const Entradas = () => {
     if (!loja) return;
     const qProdutos = query(collection(db, "produtos"), where("loja", "==", loja.nome));
     const unsubscribeProdutos = onSnapshot(qProdutos, (snapshot) => {
-      setProdutos(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      // Ordena produtos por nome
+      const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
+      setProdutos(lista);
     });
     const qEntradas = query(collection(db, "entradas"), where("destino", "==", loja.nome));
     const unsubscribeEntradas = onSnapshot(qEntradas, (snapshot) => {
-      setEntradas(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      // Ordena entradas por data decrescente (mais recentes primeiro)
+      const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      lista.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora));
+      setEntradas(lista);
     });
     return () => {
       unsubscribeProdutos();

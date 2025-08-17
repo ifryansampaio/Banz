@@ -84,6 +84,10 @@ const Sidebar = ({ open, setOpen }) => {
             <Link to="/vender" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
               {icons.vender} <span>Vender</span>
             </Link>
+            <Link to="/sangrias" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v8m0 0l-3-3m3 3l3-3M5 12a7 7 0 1114 0 7 7 0 01-14 0z" /></svg>
+              <span>Sangrias</span>
+            </Link>
             <Link to="/entradas" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
               {icons.entradas} <span>Entradas</span>
             </Link>

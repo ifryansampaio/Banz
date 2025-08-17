@@ -20,7 +20,10 @@ const Transferencias = () => {
     if (!loja) return;
     const qProdutos = query(collection(db, "produtos"), where("loja", "==", loja.nome));
     const unsubscribeProdutos = onSnapshot(qProdutos, (snapshot) => {
-      setProdutos(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      // Ordena produtos por nome
+      const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
+      setProdutos(lista);
     });
     const qLojas = query(collection(db, "lojas"));
     const unsubscribeLojas = onSnapshot(qLojas, (snapshot) => {
@@ -28,7 +31,10 @@ const Transferencias = () => {
     });
     const qTransf = query(collection(db, "transferencias"), where("origem", "==", loja.nome));
     const unsubscribeTransf = onSnapshot(qTransf, (snapshot) => {
-      setTransferencias(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      // Ordena transferências por data decrescente (mais recentes primeiro)
+      const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      lista.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora));
+      setTransferencias(lista);
     });
     return () => {
       unsubscribeProdutos();

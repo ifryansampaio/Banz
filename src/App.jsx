@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
+import Sangrias from "./pages/Sangrias";
 import Vender from "./pages/Vender";
 import Vendas from "./pages/Vendas";
 import Estoque from "./pages/Estoque";
@@ -81,25 +82,28 @@ const AppRoutes = () => {
   if (loja && !funcionario && location.pathname !== "/login") return <Navigate to="/login" replace />;
 
   return (
-    <div className="flex min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900 flex flex-row">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-      <main className="flex-1 bg-gray-900 text-white overflow-x-auto">
-        <Routes>
-          <Route path="/selecionar-loja" element={<LojaLogin />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/vender" element={<Vender />} />
-          <Route path="/entradas" element={<Entradas />} />
-          <Route path="/todas-entradas" element={<TodasEntradas />} />
-          <Route path="/transferencias" element={<Transferencias />} />
-          <Route path="/todas-transferencias" element={<TodasTransferencias />} />
-          <Route path="/vendas" element={<Vendas />} />
-          <Route path="/estoque" element={<Estoque />} />
-          <Route path="/fechamento" element={<Fechamento />} />
-          <Route path="/administrar" element={<Administrar />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </main>
+      <div className="flex-1 flex flex-col">
+        <main className="flex-1 bg-gray-900 text-white overflow-x-auto">
+          <Routes>
+            <Route path="/selecionar-loja" element={<LojaLogin />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/vender" element={<Vender />} />
+            <Route path="/entradas" element={<Entradas />} />
+            <Route path="/todas-entradas" element={<TodasEntradas />} />
+            <Route path="/transferencias" element={<Transferencias />} />
+            <Route path="/todas-transferencias" element={<TodasTransferencias />} />
+            <Route path="/vendas" element={<Vendas />} />
+            <Route path="/estoque" element={<Estoque />} />
+            <Route path="/fechamento" element={<Fechamento />} />
+            <Route path="/sangrias" element={<Sangrias />} />
+            <Route path="/administrar" element={<Administrar />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </main>
+      </div>
     </div>
   );
 };
