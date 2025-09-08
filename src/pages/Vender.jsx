@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ConfirmModal from "../components/ConfirmModal";
 import OfflineBanner from "../components/OfflineBanner";
 import { collection, addDoc, onSnapshot, query, where, updateDoc, doc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
@@ -75,6 +76,8 @@ const Vender = () => {
   const [mensagem, setMensagem] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [ultimaVendaId, setUltimaVendaId] = useState(null);
+  const [modalFecharDia, setModalFecharDia] = useState({ show: false, data: null });
+  const [vendasPendentesFechamento, setVendasPendentesFechamento] = useState([]);
   const [editandoVendaId, setEditandoVendaId] = useState(null);
   const [editandoVenda, setEditandoVenda] = useState(null);
   const [vendasExcluindo, setVendasExcluindo] = useState(() => getVendasExcluindoPersistidas(loja));
@@ -223,23 +226,107 @@ const Vender = () => {
     try {
       if (!loja || !funcionario) {
         exibirMensagem("Erro: Loja ou usuário não definido.");
+        setSalvando(false);
         return;
       }
+      // Busca vendas do banco para checar datas
+      const vendasSnap = await (await import("firebase/firestore")).getDocs(query(collection(db, "vendas"), where("loja", "==", loja.nome)));
+      const vendasBanco = vendasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const hojeStr = new Date().toLocaleDateString('en-CA');
+      const datasDiferentes = [...new Set(vendasBanco.map(v => v.data ? new Date(v.data).toLocaleDateString('en-CA') : null).filter(d => d && d !== hojeStr))];
+      if (datasDiferentes.length > 0) {
+        // Há vendas de outro(s) dia(s) não fechadas
+        setVendasPendentesFechamento(datasDiferentes);
+        setModalFecharDia({ show: true, data: datasDiferentes[0] });
+        setSalvando(false);
+        return;
+      }
+      // Validação normal e registro da venda
       for (let item of itensVenda) {
         if (!item.produto) {
           exibirMensagem("Selecione um produto.");
+          setSalvando(false);
           return;
         }
         const produto = produtos.find((p) => p.nome === item.produto);
         if (!produto) {
           exibirMensagem("Produto não encontrado: " + item.produto);
+          setSalvando(false);
           return;
         }
         if (produto.quantidade < item.quantidade) {
           const confirmar = window.confirm("Estoque ficará negativo para o produto: " + item.produto + ". Tem certeza de realizar a venda?");
-          if (!confirmar) return;
+          if (!confirmar) { setSalvando(false); return; }
         }
       }
+      await registrarVenda();
+    } catch (e) {
+      exibirMensagem("Erro ao salvar venda. Tente novamente.");
+      setSalvando(false);
+    }
+  };
+
+  // Função para fechar o dia pendente e registrar a venda
+  const fecharDiaEPersistirVenda = async () => {
+    setModalFecharDia({ show: false, data: null });
+    setSalvando(true);
+    try {
+      // Chama endpoint/ação de fechamento do dia pendente
+      const dataFechar = modalFecharDia.data;
+      // Busca vendas do dia pendente
+      const vendasSnap = await (await import("firebase/firestore")).getDocs(query(collection(db, "vendas"), where("loja", "==", loja.nome)));
+      const vendasBanco = vendasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const vendasDoDia = vendasBanco.filter(v => v.data && new Date(v.data).toLocaleDateString('en-CA') === dataFechar);
+      if (vendasDoDia.length === 0) {
+        exibirMensagem("Não há vendas para fechar no dia " + dataFechar);
+        setSalvando(false);
+        return;
+      }
+      // Calcula totais
+      let total = 0, dinheiro = 0, maquininha = 0, alertas = 0, itens = {};
+      vendasDoDia.forEach((v) => {
+        const somaPag = v.pagamentos.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
+        total += somaPag;
+        v.pagamentos.forEach((p) => {
+          if (p.forma === "dinheiro") dinheiro += parseFloat(p.valor || 0);
+          else maquininha += parseFloat(p.valor || 0);
+        });
+        if (v.alerta) alertas++;
+        v.itens.forEach((i) => {
+          itens[i.produto] = (itens[i.produto] || 0) + i.quantidade;
+        });
+      });
+      // Busca sangrias do dia
+      const sangriasSnap = await (await import("firebase/firestore")).getDocs(query(collection(db, "sangrias"), where("loja", "==", loja.nome), where("data", "==", dataFechar)));
+      const sangriasDoDia = sangriasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      await addDoc(collection(db, "fechamentos"), {
+        loja: loja.nome,
+        data: dataFechar,
+        vendas: vendasDoDia,
+        totais: { total, dinheiro, maquininha, alertas, itens },
+        sangrias: sangriasDoDia,
+      });
+      // Remove vendas fechadas
+      for (const v of vendasDoDia) {
+        await deleteDoc(doc(db, "vendas", v.id));
+      }
+      // Remove sangrias fechadas
+      for (const s of sangriasDoDia) {
+        await deleteDoc(doc(db, "sangrias", s.id));
+      }
+      exibirMensagem("Dia " + dataFechar + " fechado com sucesso. Registrando venda...");
+      setTimeout(async () => {
+        await registrarVenda();
+      }, 1000);
+    } catch (e) {
+      exibirMensagem("Erro ao fechar o dia pendente. Tente novamente.");
+      setSalvando(false);
+    }
+  };
+
+  // Função para registrar a venda (usada após fechar dia pendente ou direto)
+  const registrarVenda = async () => {
+    try {
       const vendaData = {
         itens: itensVenda,
         pagamentos,
@@ -257,6 +344,7 @@ const Vender = () => {
         const snapshot = await (await import("firebase/firestore")).getDocs(q);
         if (!snapshot.empty) {
           exibirMensagem("Venda já registrada. Não será duplicada.");
+          setSalvando(false);
           return;
         }
         const docRef = await addDoc(vendasRef, { ...vendaData, offlineId });
@@ -296,7 +384,15 @@ const Vender = () => {
     } finally {
       setSalvando(false);
     }
-  }
+  };
+  // Modal de confirmação para fechar dia pendente
+  const handleConfirmFecharDia = () => {
+    fecharDiaEPersistirVenda();
+  };
+  const handleCancelFecharDia = () => {
+    setModalFecharDia({ show: false, data: null });
+    setSalvando(false);
+  };
 
   // Adiciona um novo item de venda
   const adicionarItem = () => {
@@ -394,6 +490,13 @@ const Vender = () => {
   return (
     <>
       <OfflineBanner />
+      <ConfirmModal
+        show={modalFecharDia.show}
+        title={modalFecharDia.data ? `Fechar o dia ${modalFecharDia.data}` : "Fechar dia pendente"}
+        message={modalFecharDia.data ? `É necessário fechar o dia ${modalFecharDia.data} antes de registrar a venda de hoje. Deseja fechar o dia agora?` : "Fechar dia pendente antes de registrar venda?"}
+        onConfirm={handleConfirmFecharDia}
+        onCancel={handleCancelFecharDia}
+      />
       <div className="flex flex-col min-h-screen bg-gray-900 text-white">
         <div className="flex-1 w-full max-w-3xl mx-auto p-2 sm:p-4 md:p-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-blue-300 mb-6 text-center sm:text-left">Nova Venda</h1>
