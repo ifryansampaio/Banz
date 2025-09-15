@@ -94,6 +94,26 @@ const FechamentoHistorico = () => {
                     <span className="font-bold text-lg text-blue-200">{f.data}</span>
                     <span className="font-bold text-green-300">Loja: {f.loja}</span>
                   </div>
+                  {/* Alertas de pendências */}
+                  {(() => {
+                    // Comissões pendentes
+                    const comissoesPendentes = f.vendas ? f.vendas.filter(v => v.valorComissao > 0 && !v.comissaoPaga).length : 0;
+                    // Empréstimos pendentes (lógica aprimorada: considerar campo 'emprestimosPendentes' se existir, senão filtrar array)
+                    let emprestimosPendentes = 0;
+                    if (Array.isArray(f.emprestimos)) {
+                      emprestimosPendentes = f.emprestimos.filter(e => !e.devolvido).length;
+                    } else if (typeof f.emprestimosPendentes === 'number') {
+                      emprestimosPendentes = f.emprestimosPendentes;
+                    }
+                    let alertas = [];
+                    if (comissoesPendentes > 0) alertas.push(`${comissoesPendentes} comissão(ões) pendente(s)`);
+                    if (emprestimosPendentes > 0) alertas.push(`${emprestimosPendentes} empréstimo(s) pendente(s)`);
+                    return alertas.length > 0 ? (
+                      <div className="bg-yellow-300 text-yellow-900 font-bold rounded p-2 mb-2 animate-pulse">
+                        ⚠️ {alertas.join(" | ")}
+                      </div>
+                    ) : null;
+                  })()}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-gray-900 p-3 rounded-lg">
                       <span className="font-bold text-blue-300">Vendas Totais:</span> R$ {f.totais?.total?.toFixed(2) || "0.00"}

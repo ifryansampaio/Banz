@@ -138,34 +138,72 @@ const Fechamento = () => {
 
 
   const fecharDia = async () => {
+    // Limpa empréstimos devolvidos
+    const emprestimosDevolvidosSnap = await getDocs(query(collection(db, "emprestimos"), where("devolvido", "==", true)));
+    for (const emp of emprestimosDevolvidosSnap.docs) {
+      await deleteDoc(doc(db, "emprestimos", emp.id));
+    }
     if (!vendas || vendas.length === 0) {
       alert("Não há vendas para fechar nesta loja.");
       return;
     }
     setFechando(true);
     const hoje = new Date();
-    const totaisValidos = totais && typeof totais === 'object' ? totais : { total: 0, dinheiro: 0, maquininha: 0, alertas: 0, itens: {} };
+    const hojeStr = hoje.toISOString().slice(0, 10);
+    // Calcula lucro bruto
+    let lucroBruto = 0;
+    if (vendas && vendas.length > 0) {
+      vendas.forEach(v => {
+        if (v.itens && Array.isArray(v.itens)) {
+          v.itens.forEach(i => {
+            // lucro bruto = soma dos (precoVenda - precoCusto) * quantidade
+            const precoVenda = i.precoVenda || i.preco || 0;
+            const precoCusto = i.precoCusto || 0;
+            lucroBruto += (precoVenda - precoCusto) * i.quantidade;
+          });
+        }
+      });
+    }
+    const totaisValidos = {
+      ...(totais && typeof totais === 'object' ? totais : { total: 0, dinheiro: 0, maquininha: 0, alertas: 0, itens: {} }),
+      lucroBruto
+    };
+    // Busca todos empréstimos do dia (ativos e devolvidos)
+    const emprestimosSnap = await getDocs(query(collection(db, "emprestimos")));
+    const emprestimosDoDia = emprestimosSnap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(e => {
+        // Considera empréstimos criados ou devolvidos hoje
+        const dataEmp = e.data ? e.data.slice(0, 10) : null;
+        const dataDevol = e.dataDevolucao ? e.dataDevolucao.slice(0, 10) : null;
+        return (dataEmp === hojeStr || dataDevol === hojeStr);
+      });
+    // Move todos empréstimos do dia (ativos e devolvidos) para o fechamento
     await addDoc(collection(db, "fechamentos"), {
       loja: lojaSelecionada,
-      data: hoje.toISOString().slice(0, 10),
+      data: hojeStr,
       vendas,
       totais: totaisValidos,
-      // Salva sangrias do dia
       sangrias: (await (async () => {
-        const hojeStr = hoje.toLocaleDateString('en-CA');
         const snap = await getDocs(query(collection(db, "sangrias"), where("loja", "==", lojaSelecionada), where("data", "==", hojeStr)));
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       })()),
+      emprestimos: emprestimosDoDia,
     });
-    // Limpa vendas do dia (pode ser melhorado para só as do dia)
+    // Limpa vendas do dia, incluindo todas comissões pagas
     const vendasSnap = await getDocs(query(collection(db, "vendas"), where("loja", "==", lojaSelecionada)));
     for (const venda of vendasSnap.docs) {
+      // Remove todas vendas do dia, incluindo comissões pagas
       await deleteDoc(doc(db, "vendas", venda.id));
     }
     // Limpa sangrias do dia
-    const sangriasSnap = await getDocs(query(collection(db, "sangrias"), where("loja", "==", lojaSelecionada), where("data", "==", hoje.toLocaleDateString('en-CA'))));
+    const sangriasSnap = await getDocs(query(collection(db, "sangrias"), where("loja", "==", lojaSelecionada), where("data", "==", hojeStr)));
     for (const sangria of sangriasSnap.docs) {
       await deleteDoc(doc(db, "sangrias", sangria.id));
+    }
+    // Limpa empréstimos ativos
+    for (const emp of emprestimosSnap.docs) {
+      await deleteDoc(doc(db, "emprestimos", emp.id));
     }
     // Backup automático da loja após fechamento
     await exportarBackupFirestore();
@@ -174,11 +212,19 @@ const Fechamento = () => {
 
   // Fechamento total de todas as lojas
   const fecharTodasLojas = async () => {
+    // Limpa empréstimos devolvidos
+    const emprestimosDevolvidosSnap = await getDocs(query(collection(db, "emprestimos"), where("devolvido", "==", true)));
+    for (const emp of emprestimosDevolvidosSnap.docs) {
+      await deleteDoc(doc(db, "emprestimos", emp.id));
+    }
     setFechando(true);
     const hoje = new Date();
     const hojeStr = hoje.toLocaleDateString('en-CA'); // yyyy-mm-dd
     const lojasSnap = await getDocs(collection(db, "lojas"));
     let lojasFechadas = [];
+  // Busca todos empréstimos (ativos e devolvidos)
+  const emprestimosSnap = await getDocs(query(collection(db, "emprestimos")));
+  const emprestimosTodos = emprestimosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     for (const lojaDoc of lojasSnap.docs) {
       try {
         const nomeLoja = lojaDoc.data().nome;
@@ -204,23 +250,50 @@ const Fechamento = () => {
             itens[i.produto] = (itens[i.produto] || 0) + i.quantidade;
           });
         });
-        const totais = { total, dinheiro, maquininha, alertas, itens };
+        // Calcula lucro bruto
+        let lucroBruto = 0;
+        vendasHoje.forEach(v => {
+          if (v.itens && Array.isArray(v.itens)) {
+            v.itens.forEach(i => {
+              const precoVenda = i.precoVenda || i.preco || 0;
+              const precoCusto = i.precoCusto || 0;
+              lucroBruto += (precoVenda - precoCusto) * i.quantidade;
+            });
+          }
+        });
+        const totais = { total, dinheiro, maquininha, alertas, itens, lucroBruto };
         // Salva sangrias do dia
         const sangriasSnap = await getDocs(query(collection(db, "sangrias"), where("loja", "==", nomeLoja), where("data", "==", hojeStr)));
         const sangriasDoDia = sangriasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Filtra empréstimos da loja (se tiver campo loja, senão todos), só do dia
+        const emprestimosDaLoja = emprestimosTodos.filter(e => {
+          const dataEmp = e.data ? e.data.slice(0, 10) : null;
+          const dataDevol = e.dataDevolucao ? e.dataDevolucao.slice(0, 10) : null;
+          const lojaMatch = !e.loja || e.loja === nomeLoja;
+          return lojaMatch && (dataEmp === hojeStr || dataDevol === hojeStr);
+        });
         await addDoc(collection(db, "fechamentos"), {
           loja: nomeLoja,
           data: hojeStr,
           vendas: vendasHoje,
           totais,
           sangrias: sangriasDoDia,
+          emprestimos: emprestimosDaLoja,
         });
         for (const v of vendasHoje) {
+          // Remove todas vendas do dia, incluindo comissões pagas
           await deleteDoc(doc(db, "vendas", v.id));
         }
         // Limpa sangrias do dia
         for (const sangria of sangriasSnap.docs) {
           await deleteDoc(doc(db, "sangrias", sangria.id));
+        }
+        // Limpa empréstimos ativos da loja
+        for (const emp of emprestimosSnap.docs) {
+          const empData = emp.data();
+          if (!empData.loja || empData.loja === nomeLoja) {
+            await deleteDoc(doc(db, "emprestimos", emp.id));
+          }
         }
         lojasFechadas.push(nomeLoja);
       } catch (e) {

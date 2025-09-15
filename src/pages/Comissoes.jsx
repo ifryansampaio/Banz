@@ -23,11 +23,25 @@ const Comissoes = () => {
     fetchComissoes();
   }, [showPagos]);
 
-  const marcarComoPago = async (id) => {
-    await updateDoc(doc(db, "vendas", id), { comissaoPaga: true, dataPagamentoComissao: new Date().toISOString() });
-    setPendentes(pendentes.filter(v => v.id !== id));
-    setPagos([...pagos, { ...pendentes.find(v => v.id === id), comissaoPaga: true, dataPagamentoComissao: new Date().toISOString() }]);
-  };
+    const marcarComoPago = async (id, formaPagamentoComissao) => {
+      await updateDoc(doc(db, "vendas", id), {
+        comissaoPaga: true,
+        dataPagamentoComissao: new Date().toISOString(),
+        usuarioPagamentoComissao: funcionario?.nome || "",
+        formaPagamentoComissao: formaPagamentoComissao
+      });
+      setPendentes(pendentes.filter(v => v.id !== id));
+      setPagos([
+        ...pagos,
+        {
+          ...pendentes.find(v => v.id === id),
+          comissaoPaga: true,
+          dataPagamentoComissao: new Date().toISOString(),
+          usuarioPagamentoComissao: funcionario?.nome || "",
+          formaPagamentoComissao
+        }
+      ]);
+    };
 
   const desfazerPagamento = async (id) => {
     await updateDoc(doc(db, "vendas", id), { comissaoPaga: false, dataPagamentoComissao: null });
@@ -35,9 +49,7 @@ const Comissoes = () => {
     setPendentes([...pendentes, { ...pagos.find(v => v.id === id), comissaoPaga: false, dataPagamentoComissao: null }]);
   };
 
-  if (!funcionario?.administrador) {
-    return <div className="flex items-center justify-center h-screen bg-gray-900 text-white">Acesso restrito aos administradores.</div>;
-  }
+
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
@@ -64,9 +76,12 @@ const Comissoes = () => {
                     <div className="bg-gray-900 p-4 rounded-lg flex flex-col gap-4 shadow-lg">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <span className="font-bold text-lg text-blue-200">{c.comissionado}</span>
-                        <span className="font-bold text-green-300">R$ {c.valorComissao?.toFixed(2)}</span>
+                        <span className="font-bold text-green-300">R$ {c.valorComissao?.toFixed(2)}
+                          <span className="ml-2 text-xs text-gray-400">({c.formaPagamentoComissao === "pix" ? "Pix" : "Dinheiro"})</span>
+                        </span>
                         <span className="text-xs text-gray-400">{new Date(c.data).toLocaleString()}</span>
-                        <span className="text-xs text-gray-400">Pago em: {c.dataPagamentoComissao ? new Date(c.dataPagamentoComissao).toLocaleString() : '-'}</span>
+                          <span className="text-xs text-gray-400">Pago em: {c.dataPagamentoComissao ? new Date(c.dataPagamentoComissao).toLocaleString() : '-'} </span>
+                          <span className="text-xs text-gray-400">Por: {c.usuarioPagamentoComissao || '-'}</span>
                       </div>
                       <button
                         className="bg-yellow-600 hover:bg-yellow-700 px-3 py-2 rounded font-bold text-white text-sm w-full sm:w-auto"
@@ -84,17 +99,7 @@ const Comissoes = () => {
                 {pendentes.length === 0 && <li className="text-gray-400">Nenhuma comissão pendente.</li>}
                 {pendentes.map((c) => (
                   <li key={c.id} className="py-3">
-                    <div className="bg-gray-900 p-4 rounded-lg flex flex-col gap-4 shadow-lg">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <span className="font-bold text-lg text-blue-200">{c.comissionado}</span>
-                        <span className="font-bold text-yellow-300">R$ {c.valorComissao?.toFixed(2)}</span>
-                        <span className="text-xs text-gray-400">{new Date(c.data).toLocaleString()}</span>
-                      </div>
-                      <button
-                        className="bg-green-600 hover:bg-green-700 px-3 py-2 rounded font-bold text-white text-sm w-full sm:w-auto"
-                        onClick={() => marcarComoPago(c.id)}
-                      >Marcar como Pago</button>
-                    </div>
+                    <ComissaoPendenteItem comissao={c} marcarComoPago={marcarComoPago} />
                   </li>
                 ))}
               </ul>
@@ -105,5 +110,30 @@ const Comissoes = () => {
     </div>
   );
 };
+
+
+// Componente para item de comissão pendente com select de forma de pagamento
+function ComissaoPendenteItem({ comissao, marcarComoPago }) {
+  const [forma, setForma] = useState("dinheiro");
+  return (
+    <div className="bg-gray-900 p-4 rounded-lg flex flex-col gap-4 shadow-lg">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <span className="font-bold text-lg text-blue-200">{comissao.comissionado}</span>
+        <span className="font-bold text-yellow-300">R$ {comissao.valorComissao?.toFixed(2)}</span>
+        <span className="text-xs text-gray-400">{new Date(comissao.data).toLocaleString()}</span>
+      </div>
+      <div className="flex gap-2 items-center">
+        <select className="p-2 rounded text-black" value={forma} onChange={e => setForma(e.target.value)}>
+          <option value="dinheiro">Dinheiro</option>
+          <option value="pix">Pix</option>
+        </select>
+        <button
+          className="bg-green-600 hover:bg-green-700 px-3 py-2 rounded font-bold text-white text-sm w-full sm:w-auto"
+          onClick={() => marcarComoPago(comissao.id, forma)}
+        >Marcar como Pago</button>
+      </div>
+    </div>
+  );
+}
 
 export default Comissoes;

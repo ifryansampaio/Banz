@@ -18,6 +18,26 @@ const Dashboard = () => {
   const [fechamentoFeitoHoje, setFechamentoFeitoHoje] = useState(false);
   // --- Sangrias ---
   const [sangrias, setSangrias] = useState([]);
+  // --- Empréstimos ---
+  const [emprestimos, setEmprestimos] = useState([]);
+  const [emprestimosPendentes, setEmprestimosPendentes] = useState(0);
+  const [emprestimosDevolvidos, setEmprestimosDevolvidos] = useState(0);
+  useEffect(() => {
+    if (!loja) return;
+    const q = query(collection(db, "emprestimos"));
+    getDocs(q).then((snap) => {
+      const ativos = [];
+      const devolvidos = [];
+      snap.forEach(docu => {
+        const e = docu.data();
+        if (!e.devolvido) ativos.push(e);
+        else devolvidos.push(e);
+      });
+      setEmprestimos(ativos);
+      setEmprestimosPendentes(ativos.length);
+      setEmprestimosDevolvidos(devolvidos.length);
+    });
+  }, [loja]);
   useEffect(() => {
     if (!loja) return;
     const hojeStr = new Date().toLocaleDateString("en-CA");
@@ -148,10 +168,16 @@ const Dashboard = () => {
             });
           }
           lucroBrutoTotal += totalVenda - comissao - custoTotal;
+          // Pagamentos
           v.pagamentos.forEach((p) => {
             if (p.forma === "dinheiro") somaDinheiro += parseFloat(p.valor || 0);
             else if (["pix", "credito", "debito"].includes(p.forma)) somaMaquininha += parseFloat(p.valor || 0);
           });
+          // Desconta comissão apenas quando paga, e do tipo correto
+          if (v.comissaoPaga && v.valorComissao > 0) {
+            if (v.formaPagamentoComissao === "dinheiro") somaDinheiro -= v.valorComissao;
+            else if (v.formaPagamentoComissao === "pix") somaMaquininha -= v.valorComissao;
+          }
         });
         setTotalDinheiro(somaDinheiro);
         setTotalMaquininha(somaMaquininha);
@@ -165,11 +191,20 @@ const Dashboard = () => {
 
   // Cálculos de sangria
   const totalSangrias = sangrias.reduce((sum, s) => sum + (s.valor || 0), 0);
-  const dinheiroEmMaos = totalDinheiro - totalSangrias;
+  // Soma empréstimos ativos ao dinheiro em mãos
+  const totalEmprestimosAtivos = emprestimos.reduce((sum, e) => sum + (e.valor || 0), 0);
+  const dinheiroEmMaos = totalDinheiro - totalSangrias + totalEmprestimosAtivos;
 
+  // Alerta de comissões pendentes
+  const comissoesPendentes = vendas.filter(v => v.valorComissao > 0 && !v.comissaoPaga).length;
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
       <div className="flex-1 w-full max-w-4xl mx-auto p-2 sm:p-4 md:p-6">
+        {comissoesPendentes > 0 && (
+          <div className="bg-yellow-300 text-yellow-900 font-bold rounded p-2 mb-4 animate-pulse text-center">
+            ⚠️ {comissoesPendentes} comissão(ões) pendente(s)
+          </div>
+        )}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-blue-300 text-center sm:text-left">Dashboard</h1>
           <button
@@ -187,17 +222,28 @@ const Dashboard = () => {
               <span className="text-2xl font-bold">R$ {total.toFixed(2)}</span>
               <span className="text-lg mt-2">Total</span>
             </div>
+            <div className="bg-gradient-to-br from-yellow-700 to-yellow-500 p-6 rounded-lg shadow-lg text-white flex flex-col items-center">
+              <span className="text-2xl font-bold">R$ {dinheiroEmMaos.toFixed(2)}</span>
+              <span className="text-lg mt-2">Dinheiro em Mãos</span>
+            </div>
+            <div className="bg-gradient-to-br from-purple-700 to-purple-500 p-6 rounded-lg shadow-lg text-white flex flex-col items-center">
+              <span className="text-2xl font-bold">R$ {totalMaquininha.toFixed(2)}</span>
+              <span className="text-lg mt-2">Maquininhas</span>
+            </div>
             <div className="bg-gradient-to-br from-green-700 to-green-500 p-6 rounded-lg shadow-lg text-white flex flex-col items-center">
               <span className="text-2xl font-bold">R$ {totalDinheiro.toFixed(2)}</span>
               <span className="text-lg mt-2">Dinheiro Total</span>
             </div>
-            <div className="bg-gradient-to-br from-purple-700 to-purple-500 p-6 rounded-lg shadow-lg text-white flex flex-col items-center">
-              <span className="text-2xl font-bold">R$ {totalMaquininha.toFixed(2)}</span>
-              <span className="text-lg mt-2">Maquininha</span>
-            </div>
-            <div className="bg-gradient-to-br from-yellow-700 to-yellow-500 p-6 rounded-lg shadow-lg text-white flex flex-col items-center">
-              <span className="text-2xl font-bold">R$ {dinheiroEmMaos.toFixed(2)}</span>
-              <span className="text-lg mt-2">Dinheiro em Mãos</span>
+            {/* Empréstimos - ativos e devolvidos */}
+            <div className="bg-gradient-to-br from-indigo-700 to-indigo-500 p-6 rounded-lg shadow-lg text-white flex flex-col items-center">
+              <span className="text-2xl font-bold">R$ {totalEmprestimosAtivos.toFixed(2)}</span>
+              <span className="text-lg mt-2">Empréstimos Ativos</span>
+              {emprestimosPendentes > 0 && (
+                <span className="text-yellow-300 font-bold text-sm mt-2">{emprestimosPendentes} pendente(s)</span>
+              )}
+              {emprestimosDevolvidos > 0 && (
+                <span className="text-green-300 font-bold text-sm mt-1">{emprestimosDevolvidos} devolvido(s)</span>
+              )}
             </div>
             <div className="bg-gradient-to-br from-red-700 to-red-500 p-6 rounded-lg shadow-lg text-white flex flex-col items-center">
               <span className="text-2xl font-bold">R$ {totalSangrias.toFixed(2)}</span>

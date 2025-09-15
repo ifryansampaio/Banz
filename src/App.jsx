@@ -103,7 +103,8 @@ const AppRoutes = () => {
             <Route path="/sangrias" element={<Sangrias />} />
             <Route path="/administrar" element={<Administrar />} />
             <Route path="/comissoes" element={<Comissoes />} />
-              <Route path="/fechamento-historico" element={<FechamentoHistorico />} />
+            <Route path="/emprestimos" element={require('./pages/Emprestimos').default ? React.createElement(require('./pages/Emprestimos').default) : null} />
+            <Route path="/fechamento-historico" element={<FechamentoHistorico />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

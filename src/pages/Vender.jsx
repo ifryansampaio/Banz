@@ -347,22 +347,7 @@ const Vender = () => {
         comissionado: comissionado || null,
         valorComissao: comissionado && valorComissao ? Number(valorComissao) : null
       };
-      // Se houver comissão, registrar como sangria/puxador
-      if (comissionado && valorComissao && !isNaN(Number(valorComissao)) && Number(valorComissao) > 0) {
-        const agora = new Date();
-        const hojeStr = agora.toLocaleDateString("en-CA");
-        const horaStr = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-        await addDoc(collection(db, "sangrias"), {
-          loja: loja.nome,
-          valor: Number(valorComissao),
-          para: comissionado,
-          registradoPor: funcionario?.nome || "",
-          data: hojeStr,
-          hora: horaStr,
-          usuarioId: funcionario?.id || "",
-          tipo: "comissao"
-        });
-      }
+  // ...comissão não será registrada como sangria aqui...
       const offlineId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
       let vendaId = null;
       if (!isOffline) {
@@ -635,6 +620,28 @@ const Vender = () => {
                           <span className="font-bold text-lg text-blue-200">{editandoVenda?.vendedor}</span>
                           <div className="flex flex-wrap gap-4 text-gray-400 text-sm">
                             <span>{new Date(editandoVenda?.data).toLocaleString()}</span>
+                          </div>
+                        </div>
+                        {/* Bloco de edição de venda */}
+                        {/* Editar Comissão */}
+                        <div className="mb-2">
+                          <div className="font-bold text-blue-200 mb-1">Comissão</div>
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              className="p-2 rounded text-black w-32 sm:w-40"
+                              placeholder="Comissionado"
+                              value={editandoVenda?.comissionado || ""}
+                              onChange={e => setEditandoVenda({ ...editandoVenda, comissionado: e.target.value })}
+                            />
+                            <input
+                              type="number"
+                              className="p-2 rounded text-black w-24"
+                              placeholder="Valor Comissão"
+                              value={editandoVenda?.valorComissao || ""}
+                              min={0}
+                              onChange={e => setEditandoVenda({ ...editandoVenda, valorComissao: Number(e.target.value) })}
+                            />
                             {editandoVenda?.valorComissao > 0 && (
                               <span className="text-pink-400 font-bold">Comissionando: R$ {Number(editandoVenda.valorComissao).toFixed(2)}</span>
                             )}
