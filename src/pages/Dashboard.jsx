@@ -6,12 +6,13 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 
 const Dashboard = () => {
-  const { loja } = useAuth();
+  const { loja, funcionario } = useAuth();
   const [vendas, setVendas] = useState([]);
   const [totalDinheiro, setTotalDinheiro] = useState(0);
   const [totalMaquininha, setTotalMaquininha] = useState(0);
   const [total, setTotal] = useState(0);
   const [totaisPorItem, setTotaisPorItem] = useState({});
+  const [lucroBruto, setLucroBruto] = useState(0);
   // --- Fechamento diário ---
   const [fechando, setFechando] = useState(false);
   const [fechamentoFeitoHoje, setFechamentoFeitoHoje] = useState(false);
@@ -114,28 +115,52 @@ const Dashboard = () => {
   useEffect(() => {
     if (!loja) return;
     const q = query(collection(db, "vendas"), where("loja", "==", loja.nome));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setVendas(lista);
+    let produtosEstoque = [];
+    // Buscar produtos do estoque para custo
+    getDocs(query(collection(db, "produtos"), where("loja", "==", loja.nome))).then((snap) => {
+      produtosEstoque = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setVendas(lista);
 
-      let somaDinheiro = 0;
-      let somaMaquininha = 0;
-      let itemTotais = {};
-      lista.forEach((v) => {
-        v.pagamentos.forEach((p) => {
-          if (p.forma === "dinheiro") somaDinheiro += parseFloat(p.valor || 0);
-          else if (["pix", "credito", "debito"].includes(p.forma)) somaMaquininha += parseFloat(p.valor || 0);
+        let somaDinheiro = 0;
+        let somaMaquininha = 0;
+        let itemTotais = {};
+        let lucroBrutoTotal = 0;
+        lista.forEach((v) => {
+          let totalVenda = v.pagamentos.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
+          let comissao = v.valorComissao || 0;
+          let custoTotal = 0;
+          if (v.itens && Array.isArray(v.itens)) {
+            v.itens.forEach((i) => {
+              itemTotais[i.produto] = (itemTotais[i.produto] || 0) + i.quantidade;
+              // Buscar custo do produto
+              let custoItem = i.custo !== undefined ? parseFloat(i.custo) : undefined;
+              if (custoItem === undefined) {
+                const prodEstoque = produtosEstoque.find(p => p.nome === i.produto);
+                if (prodEstoque && prodEstoque.custo !== undefined) {
+                  custoItem = parseFloat(prodEstoque.custo);
+                } else {
+                  custoItem = 0;
+                }
+              }
+              custoTotal += custoItem * i.quantidade;
+            });
+          }
+          lucroBrutoTotal += totalVenda - comissao - custoTotal;
+          v.pagamentos.forEach((p) => {
+            if (p.forma === "dinheiro") somaDinheiro += parseFloat(p.valor || 0);
+            else if (["pix", "credito", "debito"].includes(p.forma)) somaMaquininha += parseFloat(p.valor || 0);
+          });
         });
-        v.itens.forEach((i) => {
-          itemTotais[i.produto] = (itemTotais[i.produto] || 0) + i.quantidade;
-        });
+        setTotalDinheiro(somaDinheiro);
+        setTotalMaquininha(somaMaquininha);
+        setTotal(somaDinheiro + somaMaquininha);
+        setTotaisPorItem(itemTotais);
+        setLucroBruto(lucroBrutoTotal);
       });
-      setTotalDinheiro(somaDinheiro);
-      setTotalMaquininha(somaMaquininha);
-      setTotal(somaDinheiro + somaMaquininha);
-      setTotaisPorItem(itemTotais);
     });
-    return () => unsubscribe();
+    return () => {};
   }, [loja]);
 
   // Cálculos de sangria
@@ -178,6 +203,12 @@ const Dashboard = () => {
               <span className="text-2xl font-bold">R$ {totalSangrias.toFixed(2)}</span>
               <span className="text-lg mt-2">Sangrias/Puxadores</span>
             </div>
+            {funcionario?.administrador && (
+              <div className="bg-gradient-to-br from-pink-700 to-pink-500 p-6 rounded-lg shadow-lg text-white flex flex-col items-center">
+                <span className="text-2xl font-bold">R$ {lucroBruto.toFixed(2)}</span>
+                <span className="text-lg mt-2">Lucro Bruto</span>
+              </div>
+            )}
           </div>
           {/* Sangrias realizadas */}
           <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-4">

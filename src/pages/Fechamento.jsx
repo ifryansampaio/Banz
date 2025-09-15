@@ -263,7 +263,7 @@ const Fechamento = () => {
       vendas: vendasAtualizadas,
       totais: totaisAtualizados,
     });
-    setSelectedFechamento({ ...selectedFechamento, vendas: vendasAtualizadas, totais: totaisAtualizados });
+    setSelectedFechamento({ vendas: vendasAtualizadas, totais: totaisAtualizados, ...selectedFechamento });
   };
 
   const handleEditVenda = (venda) => {
@@ -311,7 +311,7 @@ const Fechamento = () => {
       vendas: vendasAtualizadas,
       totais: totaisAtualizados,
     });
-    setSelectedFechamento({ ...selectedFechamento, vendas: vendasAtualizadas, totais: totaisAtualizados });
+  setSelectedFechamento({ vendas: vendasAtualizadas, totais: totaisAtualizados, ...selectedFechamento });
     setEditVenda(null);
     setEditVendaData(null);
   };

@@ -209,6 +209,9 @@ const Vendas = () => {
                       <span className="font-bold text-lg text-blue-200">{venda.vendedor}</span>
                       <div className="flex flex-wrap gap-4 text-gray-400 text-sm">
                         <span>{new Date(venda.data).toLocaleString()}</span>
+                        {venda.valorComissao > 0 && (
+                          <span className="text-pink-400 font-bold">Comissionando: R$ {Number(venda.valorComissao).toFixed(2)}</span>
+                        )}
                         <span>Itens: {venda.itens.map(i => `${i.produto} (${i.quantidade})`).join(", ")}</span>
                         <span>Pagamentos: {venda.pagamentos.map(p => `${p.forma}: R$${p.valor}`).join(", ")}</span>
                         {venda.observacao && <span className="text-yellow-300">Obs: {venda.observacao}</span>}

@@ -12,8 +12,7 @@ const Administrar = () => {
   const [funcionarios, setFuncionarios] = useState([]);
   const [novoFunc, setNovoFunc] = useState({ nome: "", senha: "" });
   const [editandoFunc, setEditandoFunc] = useState(null);
-  const [acessoAdmin, setAcessoAdmin] = useState(false);
-  const [senhaAdmin, setSenhaAdmin] = useState("");
+  // Removido acessoAdmin/senhaAdmin: admin area agora é livre
   const [lojas, setLojas] = useState([]);
   const [novaLoja, setNovaLoja] = useState({ nome: "" });
   const [editandoLoja, setEditandoLoja] = useState(null);
@@ -22,7 +21,7 @@ const Administrar = () => {
   const [logLojaFiltro, setLogLojaFiltro] = useState("");
   const [logTipoFiltro, setLogTipoFiltro] = useState("");
   const [logDataFiltro, setLogDataFiltro] = useState("");
-  const senhaCorreta = "pk8533";
+  // Removido senhaCorreta: admin area agora é livre
 
   useEffect(() => {
     carregarDados();
@@ -47,27 +46,35 @@ const Administrar = () => {
     // Verifica se já existe funcionário com o mesmo nome
     const jaExiste = funcionarios.some(f => f.nome.toLowerCase() === novoFunc.nome.toLowerCase());
     if (jaExiste) return;
-    await addDoc(collection(db, "funcionarios"), { ...novoFunc, nome: novoFunc.nome.toLowerCase() });
+    await addDoc(collection(db, "funcionarios"), {
+      ...novoFunc,
+      nome: novoFunc.nome.toLowerCase(),
+      administrador: !!novoFunc.administrador
+    });
     await registrarLog({
       acao: "adicionar",
       alvo: "funcionario",
       usuario: "admin",
       loja: "-",
-      detalhes: { funcionario: novoFunc.nome }
+      detalhes: { funcionario: novoFunc.nome, administrador: !!novoFunc.administrador }
     });
-    setNovoFunc({ nome: "", senha: "" });
+    setNovoFunc({ nome: "", senha: "", administrador: false });
     carregarDados();
   };
 
   const salvarEdicaoFunc = async (func) => {
     const funcRef = doc(db, "funcionarios", func.id);
-    await updateDoc(funcRef, { nome: func.nome.toLowerCase(), senha: func.senha });
+    await updateDoc(funcRef, {
+      nome: func.nome.toLowerCase(),
+      senha: func.senha,
+      administrador: !!func.administrador
+    });
     await registrarLog({
       acao: "editar",
       alvo: "funcionario",
       usuario: "admin",
       loja: "-",
-      detalhes: { funcionario: func.nome }
+      detalhes: { funcionario: func.nome, administrador: !!func.administrador }
     });
     setEditandoFunc(null);
     carregarDados();
@@ -76,11 +83,6 @@ const Administrar = () => {
   const excluirFuncionario = async (id) => {
     const confirmar = window.confirm("Deseja mesmo excluir este funcionário?");
     if (!confirmar) return;
-    const senha = window.prompt("Digite a senha de administrador para confirmar:");
-    if (senha !== senhaCorreta) {
-      alert("Senha incorreta. Exclusão cancelada.");
-      return;
-    }
     const func = funcionarios.find(f => f.id === id);
     await deleteDoc(doc(db, "funcionarios", id));
     await registrarLog({
@@ -154,40 +156,7 @@ const Administrar = () => {
     carregarLogs();
   }, []);
 
-  if (!acessoAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
-        <div className="bg-gray-800 p-6 rounded shadow w-80">
-          <h2 className="text-xl mb-4 text-center">Acesso Administrador</h2>
-          <input
-            type="password"
-            placeholder="Senha do Administrador"
-            className="w-full p-2 mb-2 text-black"
-            value={senhaAdmin}
-            onChange={e => setSenhaAdmin(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                if (senhaAdmin === senhaCorreta) setAcessoAdmin(true);
-                else setSenhaAdmin("");
-              }
-            }}
-          />
-          <button
-            className="bg-blue-600 w-full py-2 rounded"
-            onClick={() => {
-              if (senhaAdmin === senhaCorreta) setAcessoAdmin(true);
-              else setSenhaAdmin("");
-            }}
-          >
-            Entrar
-          </button>
-          {senhaAdmin !== "" && senhaAdmin !== senhaCorreta && (
-            <div className="text-red-400 mt-2">Senha incorreta!</div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  // Removido: tela de senha de administrador
 
   // Tabs: 0-Estoque, 1-Fechamento, 2-Lojas, 3-Funcionários, 4-Auditoria
   return (
@@ -250,12 +219,16 @@ const Administrar = () => {
             </div>
           )}
           {aba === 3 && (
-            // ... Funcionários (copiar bloco de funcionários original)
+            // ... Funcionários com campo de administrador
             <div>
               <h2 className="text-xl mb-4 font-semibold text-blue-200">Funcionários</h2>
-              <div className="mb-4 flex gap-2">
-                <input type="text" placeholder="Nome do Funcionário" className="p-3 border text-black rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" value={novoFunc.nome} onChange={(e) => setNovoFunc({ ...novoFunc, nome: e.target.value })} />
-                <input type="text" placeholder="Senha" className="p-3 border text-black rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" value={novoFunc.senha} onChange={(e) => setNovoFunc({ ...novoFunc, senha: e.target.value })} />
+              <div className="mb-4 flex gap-2 flex-wrap">
+                <input type="text" placeholder="Nome do Funcionário" className="p-3 border text-black rounded w-40 focus:outline-none focus:ring-2 focus:ring-blue-400" value={novoFunc.nome || ""} onChange={(e) => setNovoFunc({ ...novoFunc, nome: e.target.value })} />
+                <input type="text" placeholder="Senha" className="p-3 border text-black rounded w-32 focus:outline-none focus:ring-2 focus:ring-blue-400" value={novoFunc.senha || ""} onChange={(e) => setNovoFunc({ ...novoFunc, senha: e.target.value })} />
+                <select className="p-3 border text-black rounded w-32 focus:outline-none focus:ring-2 focus:ring-blue-400" value={novoFunc.administrador ? "true" : "false"} onChange={e => setNovoFunc({ ...novoFunc, administrador: e.target.value === "true" })}>
+                  <option value="false">Funcionário</option>
+                  <option value="true">Administrador</option>
+                </select>
                 <button onClick={adicionarFuncionario} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-bold text-white">Adicionar</button>
               </div>
               <ul className="divide-y divide-gray-700">
@@ -263,8 +236,12 @@ const Administrar = () => {
                   <li key={func.id} className="py-3">
                     {editandoFunc && editandoFunc.id === func.id ? (
                       <div className="bg-gray-900 p-4 rounded-lg flex flex-col gap-2 shadow-lg">
-                        <input type="text" className="text-black p-1 rounded" value={editandoFunc.nome} onChange={e => setEditandoFunc({ ...editandoFunc, nome: e.target.value })} />
-                        <input type="text" className="text-black p-1 rounded" value={editandoFunc.senha} onChange={e => setEditandoFunc({ ...editandoFunc, senha: e.target.value })} />
+                        <input type="text" className="text-black p-1 rounded mb-1" value={editandoFunc.nome} onChange={e => setEditandoFunc({ ...editandoFunc, nome: e.target.value })} />
+                        <input type="text" className="text-black p-1 rounded mb-1" value={editandoFunc.senha} onChange={e => setEditandoFunc({ ...editandoFunc, senha: e.target.value })} />
+                        <select className="text-black p-1 rounded mb-1" value={editandoFunc.administrador ? "true" : "false"} onChange={e => setEditandoFunc({ ...editandoFunc, administrador: e.target.value === "true" })}>
+                          <option value="false">Funcionário</option>
+                          <option value="true">Administrador</option>
+                        </select>
                         <div className="flex gap-2 mt-2">
                           <button onClick={() => salvarEdicaoFunc(editandoFunc)} className="bg-green-600 px-3 py-1 rounded font-bold text-white flex-1">Salvar</button>
                           <button onClick={() => setEditandoFunc(null)} className="bg-gray-500 px-3 py-1 rounded font-bold text-white flex-1">Cancelar</button>
@@ -275,6 +252,10 @@ const Administrar = () => {
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                           <span className="font-bold text-lg text-blue-200">{func.nome.charAt(0).toUpperCase() + func.nome.slice(1).toLowerCase()}</span>
                           <span className="text-gray-400 text-sm">({func.senha})</span>
+                          <span className={`text-xs px-2 py-1 rounded ${func.administrador ? "bg-blue-700 text-blue-100" : "bg-gray-700 text-gray-300"}`}>{func.administrador ? "Administrador" : "Funcionário"}</span>
+                          {!('administrador' in func) && (
+                            <span className="text-xs text-yellow-400">(Atualize para incluir campo de administrador)</span>
+                          )}
                         </div>
                         <div className="flex gap-2 mt-3">
                           <button onClick={() => setEditandoFunc({ ...func })} className="bg-yellow-500 px-3 py-1 rounded font-bold flex-1">Editar</button>

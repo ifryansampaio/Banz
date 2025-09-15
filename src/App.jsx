@@ -7,16 +7,18 @@ import Vender from "./pages/Vender";
 import Vendas from "./pages/Vendas";
 import Estoque from "./pages/Estoque";
 import Fechamento from "./pages/Fechamento";
-import Administrar from "./pages/Administrar";
+import Comissoes from "./pages/Comissoes";
 import Login from "./pages/Login";
 import LojaLogin from "./pages/LojaLogin";
 import Transferencias from "./pages/Transferencias";
 import Entradas from "./pages/Entradas";
 import TodasEntradas from "./pages/TodasEntradas";
 import TodasTransferencias from "./pages/TodasTransferencias";
+import FechamentoHistorico from "./pages/FechamentoHistorico";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { db } from "./firebase/config";
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
+import Administrar from "./pages/Administrar";
 
 // Função global para fechamento automático
 async function autoFechamentoGlobal(loja) {
@@ -100,6 +102,8 @@ const AppRoutes = () => {
             <Route path="/fechamento" element={<Fechamento />} />
             <Route path="/sangrias" element={<Sangrias />} />
             <Route path="/administrar" element={<Administrar />} />
+            <Route path="/comissoes" element={<Comissoes />} />
+              <Route path="/fechamento-historico" element={<FechamentoHistorico />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

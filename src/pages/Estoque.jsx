@@ -13,7 +13,7 @@ const Estoque = () => {
   function naturalSort(a, b) {
     return a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true, sensitivity: 'base' });
   }
-  const [novoProduto, setNovoProduto] = useState({ nome: "", quantidade: "", precoMin: "", precoMax: "" });
+  const [novoProduto, setNovoProduto] = useState({ nome: "", quantidade: "", precoMin: "", precoMax: "", custo: "" });
   const [editandoId, setEditandoId] = useState(null);
   const [editandoProduto, setEditandoProduto] = useState({});
 
@@ -54,8 +54,8 @@ const Estoque = () => {
   };
 
   const adicionarProduto = async () => {
-    if (!novoProduto.nome || !novoProduto.quantidade) return alert("Preencha todos os campos!");
-    const produtoData = { ...novoProduto, quantidade: parseInt(novoProduto.quantidade, 10), loja: loja.nome };
+    if (!novoProduto.nome || !novoProduto.quantidade || !novoProduto.custo) return alert("Preencha todos os campos!");
+    const produtoData = { ...novoProduto, quantidade: parseInt(novoProduto.quantidade, 10), custo: parseFloat(novoProduto.custo), loja: loja.nome };
     try {
       if (navigator.onLine) {
         await addDoc(collection(db, "produtos"), produtoData);
@@ -66,7 +66,7 @@ const Estoque = () => {
         saveLocal(`produtos_${loja.nome}`, [produtoData, ...produtosLocais]);
         // Não registra movimentação offline
       }
-      setNovoProduto({ nome: "", quantidade: "", precoMin: "", precoMax: "" });
+      setNovoProduto({ nome: "", quantidade: "", precoMin: "", precoMax: "", custo: "" });
     } catch (e) {
       console.error("Erro ao adicionar produto:", e);
     }
@@ -121,7 +121,7 @@ const Estoque = () => {
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
       <div className="flex-1 w-full max-w-4xl mx-auto p-2 sm:p-4 md:p-6">
         <h1 className="text-3xl font-bold mb-6 text-blue-300 text-center sm:text-left">Estoque</h1>
-        <div className="mb-6 flex gap-2">
+        <div className="mb-6 flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             placeholder="Nome do Produto"
@@ -149,6 +149,13 @@ const Estoque = () => {
             className="p-3 border text-black rounded w-32 focus:outline-none focus:ring-2 focus:ring-blue-400"
             value={novoProduto.precoMax}
             onChange={(e) => setNovoProduto({ ...novoProduto, precoMax: e.target.value })}
+          />
+          <input
+            type="number"
+            placeholder="Custo da peça"
+            className="p-3 border text-black rounded w-32 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            value={novoProduto.custo}
+            onChange={(e) => setNovoProduto({ ...novoProduto, custo: e.target.value })}
           />
           <button onClick={adicionarProduto} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-bold text-white">Adicionar</button>
         </div>
@@ -192,6 +199,15 @@ const Estoque = () => {
                       placeholder="Preço Máximo"
                       onChange={e => setEditandoProduto({ ...editandoProduto, precoMax: e.target.value })}
                     />
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      pattern="[0-9.]*"
+                      className="text-black p-1 rounded w-full mb-2"
+                      value={editandoProduto.custo}
+                      placeholder="Custo da Peça"
+                      onChange={e => setEditandoProduto({ ...editandoProduto, custo: e.target.value })}
+                    />
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => salvarEdicao(produto.id)} className="bg-green-600 px-3 py-1 rounded font-bold text-white flex-1">Salvar</button>
                       <button onClick={() => setEditandoId(null)} className="bg-gray-500 px-3 py-1 rounded font-bold text-white flex-1">Cancelar</button>
@@ -205,6 +221,7 @@ const Estoque = () => {
                         <span>Qtd: <b>{produto.quantidade}</b></span>
                         <span>Min: R$ {produto.precoMin}</span>
                         <span>Max: R$ {produto.precoMax}</span>
+                        <span>Custo: R$ {produto.custo !== undefined ? produto.custo : '-'}</span>
                       </div>
                     </div>
                     <div className="flex gap-2 mt-3">

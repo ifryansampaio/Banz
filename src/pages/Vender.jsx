@@ -73,6 +73,8 @@ const Vender = () => {
   const [itensVenda, setItensVenda] = useState([{ produto: "", quantidade: 1 }]);
   const [pagamentos, setPagamentos] = useState([{ forma: "dinheiro", valor: "" }]);
   const [observacao, setObservacao] = useState("");
+  const [comissionado, setComissionado] = useState("");
+  const [valorComissao, setValorComissao] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [ultimaVendaId, setUltimaVendaId] = useState(null);
@@ -215,9 +217,11 @@ const Vender = () => {
   };
 
   const limparCampos = () => {
-    setItensVenda([{ produto: "", quantidade: 1 }]);
-    setPagamentos([{ forma: "dinheiro", valor: "" }]);
-    setObservacao("");
+  setItensVenda([{ produto: "", quantidade: 1 }]);
+  setPagamentos([{ forma: "dinheiro", valor: "" }]);
+  setObservacao("");
+  setComissionado("");
+  setValorComissao("");
   };
 
   const handleVenda = async () => {
@@ -299,9 +303,15 @@ const Vender = () => {
       // Busca sangrias do dia
       const sangriasSnap = await (await import("firebase/firestore")).getDocs(query(collection(db, "sangrias"), where("loja", "==", loja.nome), where("data", "==", dataFechar)));
       const sangriasDoDia = sangriasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Garante que a data do fechamento seja igual à data das vendas
+      let dataFechamento = dataFechar;
+      if (vendasDoDia.length > 0) {
+        // Usa a data da primeira venda do dia (todas devem ser do mesmo dia)
+        dataFechamento = new Date(vendasDoDia[0].data).toLocaleDateString('en-CA');
+      }
       await addDoc(collection(db, "fechamentos"), {
         loja: loja.nome,
-        data: dataFechar,
+        data: dataFechamento,
         vendas: vendasDoDia,
         totais: { total, dinheiro, maquininha, alertas, itens },
         sangrias: sangriasDoDia,
@@ -333,8 +343,26 @@ const Vender = () => {
         observacao,
         vendedor: funcionario.nome,
         data: new Date().toISOString(),
-        loja: loja.nome
+        loja: loja.nome,
+        comissionado: comissionado || null,
+        valorComissao: comissionado && valorComissao ? Number(valorComissao) : null
       };
+      // Se houver comissão, registrar como sangria/puxador
+      if (comissionado && valorComissao && !isNaN(Number(valorComissao)) && Number(valorComissao) > 0) {
+        const agora = new Date();
+        const hojeStr = agora.toLocaleDateString("en-CA");
+        const horaStr = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        await addDoc(collection(db, "sangrias"), {
+          loja: loja.nome,
+          valor: Number(valorComissao),
+          para: comissionado,
+          registradoPor: funcionario?.nome || "",
+          data: hojeStr,
+          hora: horaStr,
+          usuarioId: funcionario?.id || "",
+          tipo: "comissao"
+        });
+      }
       const offlineId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
       let vendaId = null;
       if (!isOffline) {
@@ -559,6 +587,25 @@ const Vender = () => {
                 ))}
                 <button type="button" aria-label="Adicionar pagamento" onClick={adicionarPagamento} className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-white font-bold w-full md:w-auto">Adicionar Pagamento</button>
               </div>
+              {/* Campos de comissionado e valor da comissão */}
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  className="p-2 rounded text-black w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="Nome do Comissionado (Puxador)"
+                  value={comissionado}
+                  onChange={e => setComissionado(e.target.value)}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="p-2 rounded text-black w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="Valor da Comissão (R$)"
+                  value={valorComissao}
+                  onChange={e => setValorComissao(e.target.value)}
+                />
+              </div>
               <textarea
                 className="w-full p-3 rounded text-black mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 placeholder="Observação"
@@ -588,6 +635,9 @@ const Vender = () => {
                           <span className="font-bold text-lg text-blue-200">{editandoVenda?.vendedor}</span>
                           <div className="flex flex-wrap gap-4 text-gray-400 text-sm">
                             <span>{new Date(editandoVenda?.data).toLocaleString()}</span>
+                            {editandoVenda?.valorComissao > 0 && (
+                              <span className="text-pink-400 font-bold">Comissionando: R$ {Number(editandoVenda.valorComissao).toFixed(2)}</span>
+                            )}
                           </div>
                         </div>
                         {/* Editar Itens */}
@@ -686,6 +736,9 @@ const Vender = () => {
                           <span className="font-bold text-lg text-blue-200">{venda.vendedor}</span>
                           <div className="flex flex-wrap gap-4 text-gray-400 text-sm">
                             <span>{new Date(venda.data).toLocaleString()}</span>
+                            {venda.valorComissao > 0 && (
+                              <span className="text-pink-400 font-bold">Comissionando: R$ {Number(venda.valorComissao).toFixed(2)}</span>
+                            )}
                             <span>Itens: {venda.itens.map(i => `${i.produto} (${i.quantidade})`).join(", ")}</span>
                             <span>Pagamentos: {venda.pagamentos.map(p => `${p.forma}: R$${p.valor}`).join(", ")}</span>
                             {venda.observacao && <span className="text-yellow-300">Obs: {venda.observacao}</span>}
