@@ -97,18 +97,18 @@ const Sidebar = ({ open, setOpen }) => {
             <Link to="/transferencias" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
               {icons.transferencias} <span>Transferências</span>
             </Link>
+            <Link to="/comissoes" onClick={handleNav} className="hover:bg-yellow-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 10c-4.418 0-8-1.79-8-4V7a2 2 0 012-2h12a2 2 0 012 2v7c0 2.21-3.582 4-8 4z" /></svg>
+              <span>Comissões</span>
+            </Link>
             {funcionario?.administrador && (
               <>
                 <Link to="/administrar" onClick={handleNav} className="hover:bg-blue-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
                   {icons.administrar} <span>Administrar</span>
                 </Link>
-                <Link to="/comissoes" onClick={handleNav} className="hover:bg-yellow-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 10c-4.418 0-8-1.79-8-4V7a2 2 0 012-2h12a2 2 0 012 2v7c0 2.21-3.582 4-8 4z" /></svg>
-                  <span>Comissões</span>
+                <Link to="/fechamento-historico" onClick={handleNav} className="hover:bg-pink-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
+                  {icons.fechamento} <span>Fechamento Histórico</span>
                 </Link>
-                  <Link to="/fechamento-historico" onClick={handleNav} className="hover:bg-pink-700 transition p-3 rounded text-lg font-medium flex items-center gap-3">
-                    {icons.fechamento} <span>Fechamento Histórico</span>
-                  </Link>
               </>
             )}
           </nav>

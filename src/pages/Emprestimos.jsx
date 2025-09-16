@@ -4,7 +4,7 @@ import { collection, addDoc, getDocs, updateDoc, doc, query, where } from "fireb
 import { useAuth } from "../context/AuthContext";
 
 const Emprestimos = () => {
-  const { funcionario } = useAuth();
+  const { funcionario, loja } = useAuth();
   const [emprestimos, setEmprestimos] = useState([]);
   const [valor, setValor] = useState("");
   const [forma, setForma] = useState("dinheiro");
@@ -13,9 +13,11 @@ const Emprestimos = () => {
   const [historico, setHistorico] = useState([]);
 
   useEffect(() => {
+    if (!loja) return;
     const fetchEmprestimos = async () => {
       setLoading(true);
-      const snap = await getDocs(collection(db, "emprestimos"));
+      const q = query(collection(db, "emprestimos"), where("loja", "==", loja.nome));
+      const snap = await getDocs(q);
       const ativos = [];
       const devolvidos = [];
       snap.docs.forEach(docu => {
@@ -23,22 +25,23 @@ const Emprestimos = () => {
         if (e.devolvido) devolvidos.push(e);
         else ativos.push(e);
       });
-  ativos.sort((a, b) => new Date(b.data) - new Date(a.data));
-  devolvidos.sort((a, b) => new Date(b.dataDevolucao || 0) - new Date(a.dataDevolucao || 0));
+      ativos.sort((a, b) => new Date(b.data) - new Date(a.data));
+      devolvidos.sort((a, b) => new Date(b.dataDevolucao || 0) - new Date(a.dataDevolucao || 0));
       setEmprestimos(ativos);
       setHistorico(devolvidos);
       setLoading(false);
     };
     fetchEmprestimos();
-  }, []);
+  }, [loja]);
 
   const registrarEmprestimo = async () => {
-    if (!valor || !origem) return;
+    if (!valor || !origem || !loja) return;
     const agora = new Date();
     await addDoc(collection(db, "emprestimos"), {
       valor: Number(valor),
       forma,
       origem,
+      loja: loja.nome,
       registradoPor: funcionario?.nome || "",
       data: agora.toISOString(),
       devolvido: false,
@@ -47,7 +50,8 @@ const Emprestimos = () => {
     setOrigem("");
     setForma("dinheiro");
     // Atualiza lista
-    const snap = await getDocs(collection(db, "emprestimos"));
+    const q = query(collection(db, "emprestimos"), where("loja", "==", loja.nome));
+    const snap = await getDocs(q);
     setEmprestimos(snap.docs.filter(d => !d.data().devolvido).map(d => ({ id: d.id, ...d.data() })));
   };
 
@@ -60,7 +64,8 @@ const Emprestimos = () => {
       dataDevolucao: agora.toISOString(),
     });
     // Atualiza lista
-    const snap = await getDocs(collection(db, "emprestimos"));
+    const q = query(collection(db, "emprestimos"), where("loja", "==", loja.nome));
+    const snap = await getDocs(q);
     setEmprestimos(snap.docs.filter(d => !d.data().devolvido).map(d => ({ id: d.id, ...d.data() })));
     setHistorico(snap.docs.filter(d => d.data().devolvido).map(d => ({ id: d.id, ...d.data() })));
   };
