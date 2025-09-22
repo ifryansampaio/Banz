@@ -74,6 +74,12 @@ const Fechamento = () => {
         const dataMaisAntiga = vendasPendentes.reduce((min, v) => v.data < min ? v.data : min, vendasPendentes[0].data);
         const dataVenda = dataMaisAntiga.slice(0, 10);
         if (dataVenda < hojeStr && !datasFechadas.includes(dataVenda)) {
+          // Verifica se já existe fechamento para a loja e dataVenda
+          const fechamentoExistenteSnap = await getDocs(query(collection(db, "fechamentos"), where("loja", "==", lojaSelecionada), where("data", "==", dataVenda)));
+          if (!fechamentoExistenteSnap.empty) {
+            // Já existe, não cria outro
+            return;
+          }
           // Faz fechamento automático do dia anterior
           const vendasDoDia = vendasPendentes.filter(v => v.data.slice(0, 10) === dataVenda);
           const totais = calcularTotais(vendasDoDia, true);
@@ -150,6 +156,13 @@ const Fechamento = () => {
     setFechando(true);
     const hoje = new Date();
     const hojeStr = hoje.toISOString().slice(0, 10);
+    // Verifica se já existe fechamento para a loja e data
+    const fechamentoExistenteSnap = await getDocs(query(collection(db, "fechamentos"), where("loja", "==", lojaSelecionada), where("data", "==", hojeStr)));
+    if (!fechamentoExistenteSnap.empty) {
+      alert("Já existe um fechamento para esta loja e data. Não será criado outro.");
+      setFechando(false);
+      return;
+    }
     // Calcula lucro bruto
     let lucroBruto = 0;
     if (vendas && vendas.length > 0) {
@@ -222,9 +235,9 @@ const Fechamento = () => {
     const hojeStr = hoje.toLocaleDateString('en-CA'); // yyyy-mm-dd
     const lojasSnap = await getDocs(collection(db, "lojas"));
     let lojasFechadas = [];
-  // Busca todos empréstimos (ativos e devolvidos)
-  const emprestimosSnap = await getDocs(query(collection(db, "emprestimos")));
-  const emprestimosTodos = emprestimosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Busca todos empréstimos (ativos e devolvidos)
+    const emprestimosSnap = await getDocs(query(collection(db, "emprestimos")));
+    const emprestimosTodos = emprestimosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     for (const lojaDoc of lojasSnap.docs) {
       try {
         const nomeLoja = lojaDoc.data().nome;
@@ -237,6 +250,12 @@ const Fechamento = () => {
             return dataVenda === hojeStr;
           });
         if (vendasHoje.length === 0) continue;
+        // Verifica se já existe fechamento para a loja e data
+        const fechamentoExistenteSnap = await getDocs(query(collection(db, "fechamentos"), where("loja", "==", nomeLoja), where("data", "==", hojeStr)));
+        if (!fechamentoExistenteSnap.empty) {
+          // Já existe, não cria outro
+          continue;
+        }
         let total = 0, dinheiro = 0, maquininha = 0, alertas = 0, itens = {};
         vendasHoje.forEach((v) => {
           const somaPag = v.pagamentos.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
